@@ -9,8 +9,8 @@ var movingDown = true, movingUp = false;
 
 'use strict';
 
-Physijs.scripts.worker = '/js/physijs_worker.js';
-Physijs.scripts.ammo = '/js/ammo.js';
+Physijs.scripts.worker = 'lib/physijs_worker.js';
+Physijs.scripts.ammo = 'ammo.js';
 
 function Main() {
 
@@ -50,7 +50,7 @@ function init() {
     loader = new THREE.ObjectLoader();
 
     loader.load("Assets/Dices/d6n.json", function (obj) {
-        var materialObj = new THREE.MeshBasicMaterial({ color: 0x3479e5 });
+        var materialObj = new THREE.MeshLambertMaterial({ color: 0x3479e5 });
         obj.traverse(function (child) {
             if (child instanceof THREE.Mesh) {
                 child.material = materialObj;
@@ -70,7 +70,7 @@ function init() {
     });
 
     loader.load("Assets/Dices/d10.json", function (obj) {
-        var materialObj = new THREE.MeshBasicMaterial({ color: 0xc92424 });
+        var materialObj = new THREE.MeshLambertMaterial({ color: 0xc92424 });
         obj.traverse(function (child) {
             if (child instanceof THREE.Mesh) {
                 child.material = materialObj;
@@ -82,7 +82,7 @@ function init() {
     });
 
     loader.load("Assets/Dices/d20.json", function (obj) {
-        var materialObj = new THREE.MeshBasicMaterial({ color: 0x139615 });
+        var materialObj = new THREE.MeshLambertMaterial({ color: 0x139615 });
         obj.traverse(function (child) {
             if (child instanceof THREE.Mesh) {
                 child.material = materialObj;
