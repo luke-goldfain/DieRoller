@@ -1,49 +1,44 @@
 ﻿var camera, scene, renderer;
 var cubeGeometry, material, plane, planeGeometry;
-var d6n, d10, d20; // Die models
-var d10texture; // Die textures (not working yet)
+var three_d6n, three_d10, three_d20; // Die meshes
+var testBox; // For testing d6n geometry
+
+var cannon_d6n, cannon_d10, cannon_d20; // Die bodies
+var d6nVerts = [], d10Verts = [], d20Verts = []; // Vertex arrays for die models
+var d6nFaces = [], d10Faces = [], d20Faces = []; // Face arrays for die models
+var d6nGeo; // Die geometries
 var light, light2, ambientLight, rectLightHelper;
 var loader, textureLoader;
 
-var movingDown = true, movingUp = false;
-
-'use strict';
-
-Physijs.scripts.worker = 'lib/physijs_worker.js';
-Physijs.scripts.ammo = 'ammo.js';
+var physicsMaterial, physicsContactMaterial; // Cannon.js materials
+var world, timeStep = 1/60; // Cannon.js world/update variables
 
 function Main() {
-
-    init();
+    // Promise to run init, then run initCannon.
+    promise = init().then(initCannon);
 }
 
 function init() {
-
+    d = new $.Deferred();
 
     camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 100);
     camera.position.set(0, 2, 4);
     camera.rotation.set(-Math.PI / 4, 0, 0);
 
-    scene = new Physijs.Scene();
-    scene.setGravity(new THREE.Vector3(0, -30, 0)); // Gravity not really working?
+    scene = new THREE.Scene();
     scene.addEventListener('update', function () { });
 
     initLights();
 
-    textureLoader = new THREE.TextureLoader();
+    material = new THREE.MeshLambertMaterial({ color: 0x4f4f4f });
 
-    cubeGeometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-    material = Physijs.createMaterial(new THREE.MeshLambertMaterial({ color: 0x4f4f4f}));
-
-    d10texture = Physijs.createMaterial(new THREE.MeshLambertMaterial());
-    textureLoader.load("Assets/d10 numbers.png", function (texture) {
-        d10texture.map = texture;
-        material.needsUpdate = true;
-    });
-    //d10texture = Physijs.createMaterial(new THREE.MeshLambertMaterial({ map: textureLoader.load('Assets/d10 numbers.png') }));
+    // TEST this is for testing d6n mesh location
+    var cubeGeo = new THREE.CubeGeometry(0.3, 0.3, 0.3);
+    testBox = new THREE.Mesh(cubeGeo, material);
+    scene.add(testBox);
 
     planeGeometry = new THREE.CubeGeometry(5, 0.1, 5);
-    plane = new Physijs.BoxMesh(planeGeometry, material, 0);
+    plane = new THREE.Mesh(planeGeometry, material);
     plane.position.set(0, -2, 0);
     scene.add(plane);
 
@@ -51,22 +46,23 @@ function init() {
 
     loader.load("Assets/Dices/d6n.json", function (obj) {
         var materialObj = new THREE.MeshLambertMaterial({ color: 0x3479e5 });
+
+        obj.scale.set(20, 20, 20);
+
         obj.traverse(function (child) {
             if (child instanceof THREE.Mesh) {
                 child.material = materialObj;
+
+                d6nGeo = new THREE.Geometry().fromBufferGeometry(child.geometry);
+
+                d.resolve();
             }
         });
-        obj.scale.set(20, 20, 20);
-        obj.position.set(0, 0, 2);
 
-        var geometry = loader.parseGeometries(obj);
-        //geometry.computeBoundingBox();
+        three_d6n = obj;
+        scene.add(three_d6n);
 
-        obj.geometry = geometry;
-
-        d6n = new Physijs.ConvexMesh(obj);
-
-        scene.add(d6n);
+        console.log(three_d6n);
     });
 
     loader.load("Assets/Dices/d10.json", function (obj) {
@@ -78,7 +74,9 @@ function init() {
         });
         obj.scale.set(20, 20, 20);
         obj.position.set(2, 0, 0);
-        scene.add(obj);
+
+        cannon_d10 = obj;
+        scene.add(cannon_d10);
     });
 
     loader.load("Assets/Dices/d20.json", function (obj) {
@@ -90,7 +88,9 @@ function init() {
         });
         obj.scale.set(20, 20, 20);
         obj.position.set(-2, 0, 0);
-        scene.add(obj);
+
+        cannon_d20 = obj;
+        scene.add(cannon_d20);
     });
 
     renderer = new THREE.WebGLRenderer({ antialias: true});
@@ -98,6 +98,41 @@ function init() {
     document.body.appendChild(renderer.domElement);
 
     requestAnimationFrame(render);
+    return d.promise();
+}
+
+function initCannon() {
+    d = new $.Deferred();
+
+    world = new CANNON.World(); // Create a new cannon.js world
+    world.gravity.set(0, -9.82 / 2, 0); // Set the gravity
+    world.broadphase = new CANNON.NaiveBroadphase(); // Broadphase algorithm detects collisions
+
+    cannon_d6n = new CANNON.Body({ mass: 1 });
+
+    var shape = new CANNON.Box(new CANNON.Vec3(0.15,0.15,0.15)); 
+    cannon_d6n.addShape(shape);
+    cannon_d6n.angularVelocity.set(0, 0, -3);
+    //cannon_d6n.position.set(0.25, 0.25, 0.25);
+    cannon_d6n.angularDamping = 0.5;
+    world.addBody(cannon_d6n);
+
+    var platformBody = new CANNON.Body({ mass: 0, position: new CANNON.Vec3(0, -2, 0) });
+    var platform = new CANNON.Box(new CANNON.Vec3(5, 0.1, 5));
+    platformBody.addShape(platform);
+    world.addBody(platformBody);
+
+    physicsMaterial = new CANNON.Material("baseMaterial");
+    physicsContactMaterial = new CANNON.ContactMaterial(
+        physicsMaterial,
+        physicsMaterial, 
+        0.4,  // Friction coefficient
+        0.2); // Restitution (bounciness)
+
+    // Add material to the Cannon.js world
+    world.addContactMaterial(physicsContactMaterial);
+
+    return d.promise();
 }
 
 function initLights() {
@@ -115,43 +150,24 @@ function initLights() {
 }
 
 function render() {
-    scene.simulate();
     requestAnimationFrame(render);
 
-    //d6n.position.y -= 0.01;
+    updatePhysics();
 
     renderer.render(scene, camera);
 }
 
-/*function animate() {
+function updatePhysics() {
+    world.step(timeStep);
 
-    requestAnimationFrame(animate);
-    rounded_cube.rotation.x += 0.01;
-    rounded_cube.rotation.y += 0.04;
+    // Reflect the cannon object's position onto the three mesh
+    three_d6n.position.copy(cannon_d6n.position);
+    testBox.position.copy(cannon_d6n.position);
     
-    d10.rotation.x += 0.04;
-    d10.rotation.y += 0.01;
+    three_d6n.quaternion.copy(cannon_d6n.quaternion);
+    testBox.quaternion.copy(cannon_d6n.quaternion);
 
-    if (movingDown) {
-        rounded_cube.position.y -= 0.01;
-        d10.position.y -= 0.01;
-
-        if (rounded_cube.position.y <= -2) {
-            movingDown = false;
-            movingUp = true;
-        }
-    }
-
-    if (movingUp) {
-        rounded_cube.position.y += 0.01;
-        d10.position.y += 0.01;
-
-        if (rounded_cube.position.y >= 0) {
-            movingDown = true;
-            movingUp = false;
-        }
-    }
-
-
-    renderer.render(scene, camera);
-}*/
+    //three_d6n.position.x += 0.5;
+    //three_d6n.position.y += 0.5;
+    //three_d6n.position.z += 0.5;
+}
