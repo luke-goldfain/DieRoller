@@ -1,6 +1,7 @@
 ﻿var camera, scene, renderer;
 var cubeGeometry, material, plane, planeGeometry;
 var three_d6n, three_d10, three_d20; // Die meshes
+var d6nGroup, d20Group;
 var testBox, testIco; // For testing die geometries
 
 var cannon_d6n, cannon_d10, cannon_d20; // Die bodies
@@ -18,15 +19,15 @@ var world, timeStep = 1/60; // Cannon.js world/update variables
 
 function Main() {
     // Promise to run init, then run initCannon.
-    promise = init().then(initCannon);
+    promise = initThree().then(initCannon);
 }
 
-function init() {
+function initThree() {
     d = new $.Deferred();
 
     camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 100);
-    camera.position.set(0, 2, 4);
-    camera.rotation.set(-Math.PI / 4, 0, 0);
+    camera.position.set(0, 2, 2);
+    camera.rotation.set(-Math.PI / 3, 0, 0);
 
     scene = new THREE.Scene();
     scene.addEventListener('update', function () { });
@@ -35,16 +36,10 @@ function init() {
 
     material = new THREE.MeshLambertMaterial({ color: 0x4f4f4f });
 
-    // TEST this is for testing d6n geometry location
-    var cubeGeo = new THREE.CubeGeometry(0.3, 0.3, 0.3);
-    testBox = new THREE.Mesh(cubeGeo, material);
-    scene.add(testBox);
-
     // TEST this is for testing d20 geometry location
-    var icoGeo = new THREE.IcosahedronGeometry(0.25, 0);
-    testIco = new THREE.Mesh(icoGeo, material);
-    testIco.position.set(-2, 0, 0);
-    scene.add(testIco);
+    //var icoGeo = new THREE.IcosahedronGeometry(0.25, 0);
+    //testIco = new THREE.Mesh(icoGeo, material);
+    //scene.add(testIco);
 
     planeGeometry = new THREE.CubeGeometry(5, 0.1, 5);
     plane = new THREE.Mesh(planeGeometry, material);
@@ -56,7 +51,7 @@ function init() {
     loader.load("Assets/Dices/d6n.json", function (obj) {
         var materialObj = new THREE.MeshLambertMaterial({ color: 0x3479e5 });
 
-        obj.scale.set(20, 20, 20);
+        obj.scale.set(24, 24, 24);
 
         obj.traverse(function (child) {
             if (child instanceof THREE.Mesh) {
@@ -69,10 +64,17 @@ function init() {
         d6nGeo.translate(obj.position);
 
         three_d6n = obj;
-        scene.add(three_d6n);
+        //scene.add(three_d6n);
+
+        // Create a group to force the mesh to a relative position
+        d6nGroup = new THREE.Group();
+        three_d6n.position.set(.5, -.15, .45); // Relative position within the group (this should equal initial global location of cannon_d6n)
+        d6nGroup.add(three_d6n);
+
+        scene.add(d6nGroup);
     });
 
-    loader.load("Assets/Dices/d10.json", function (obj) {
+    /*loader.load("Assets/Dices/d10.json", function (obj) {
         var materialObj = new THREE.MeshLambertMaterial({ color: 0xc92424 });
         obj.traverse(function (child) {
             if (child instanceof THREE.Mesh) {
@@ -84,7 +86,7 @@ function init() {
 
         cannon_d10 = obj;
         scene.add(cannon_d10);
-    });
+    });*/
 
     loader.load("Assets/Dices/d20.json", function (obj) {
         var materialObj = new THREE.MeshLambertMaterial({ color: 0x139615 });
@@ -113,14 +115,20 @@ function init() {
                              // Another way to do this might be to have a boolean waiting for d20Verts and d20Faces to not be undefined.
             }
         });
-        obj.scale.set(20, 20, 20);
-        obj.position.set(-2, 0, 0);
-        d20Geo.translate(-2, 0, 0);
+        obj.scale.set(24, 24, 24);
 
         obj.geometry = d20Geo;
 
         three_d20 = obj;
-        scene.add(three_d20);
+
+        d20Group = new THREE.Group();
+        three_d20.position.set(0, .1, .75);
+        three_d20.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 7);
+        d20Group.add(three_d20);
+        //d20Group.add(testIco);
+
+        //scene.add(three_d20);
+        scene.add(d20Group);
     });
 
     renderer = new THREE.WebGLRenderer({ antialias: true});
@@ -157,7 +165,7 @@ function initCannon() {
     var d6nShape = new CANNON.Box(new CANNON.Vec3(0.15,0.15,0.15)); // Make a box to correspond to d6.
     cannon_d6n.addShape(d6nShape); // Add the new shape to the body.
     cannon_d6n.angularVelocity.set(0, 0, -3); // Position, velocity, and angular velocity assignments for testing purposes.
-    cannon_d6n.velocity.set(-2, 0, 0);
+    cannon_d6n.velocity.set(-2, 0, -.1);
     world.addBody(cannon_d6n); // Add d6n to world.
 
     // Add a convex polyhedron, based on the THREE.IcosahedronGeometry d20Geo, to the cannon world.
@@ -178,8 +186,8 @@ function initCannon() {
     //d20shape.transformAllPoints(new CANNON.Vec3(-2, 0, 0));
     cannon_d20.addShape(d20shape);
     cannon_d20.position.set(-2, 0, 0); // Position, velocity, and angular velocity assignments for testing purposes.
-    cannon_d20.angularVelocity.set(2, 0, -1);
-    cannon_d20.velocity.set(2, 0, 0);
+    cannon_d20.angularVelocity.set(2, 0, 1);
+    cannon_d20.velocity.set(2, 0, 1);
     world.addBody(cannon_d20);
 
     var platformBody = new CANNON.Body({ mass: 0, material: physicsMaterial, position: new CANNON.Vec3(0, -2, 0) });
@@ -216,17 +224,11 @@ function updatePhysics() {
     world.step(timeStep);
 
     // Reflect the cannon object's position onto the three mesh
-    three_d6n.position.copy(cannon_d6n.position);
-    testBox.position.copy(cannon_d6n.position);
-    
-    three_d6n.quaternion.copy(cannon_d6n.quaternion);
-    testBox.quaternion.copy(cannon_d6n.quaternion);
+    d6nGroup.position.copy(cannon_d6n.position);
+    d6nGroup.quaternion.copy(cannon_d6n.quaternion);
 
-    three_d20.position.copy(cannon_d20.position);
-    testIco.position.copy(cannon_d20.position);
-
-    three_d20.quaternion.copy(cannon_d20.quaternion);
-    testIco.quaternion.copy(cannon_d20.quaternion);
+    d20Group.position.copy(cannon_d20.position);
+    d20Group.quaternion.copy(cannon_d20.quaternion);
 
     // Update position variables to check if the dice have stopped
     d6nLastPos = d6nCurrentPos;
@@ -247,7 +249,7 @@ function updatePhysics() {
 function d6nResultDisplay() {
     var p = document.createElement("p");
 
-    console.log(three_d6n.quaternion); // debug
+    //console.log(three_d6n.quaternion); // debug
 }
 
 function d20ResultDisplay() {
