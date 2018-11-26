@@ -1,12 +1,12 @@
 ﻿var camera, scene, renderer;
 var cubeGeometry, material, plane, planeGeometry;
 var three_d6n, three_d10, three_d20; // Die meshes
-var testBox; // For testing d6n geometry
+var testBox, testIco; // For testing die geometries
 
 var cannon_d6n, cannon_d10, cannon_d20; // Die bodies
 var d6nVerts = [], d10Verts = [], d20Verts = []; // Vertex arrays for die models
 var d6nFaces = [], d10Faces = [], d20Faces = []; // Face arrays for die models
-var d6nGeo; // Die geometries
+var d6nGeo, d20Geo; // Die geometries
 var light, light2, ambientLight, rectLightHelper;
 var loader, textureLoader;
 
@@ -32,10 +32,16 @@ function init() {
 
     material = new THREE.MeshLambertMaterial({ color: 0x4f4f4f });
 
-    // TEST this is for testing d6n mesh location
+    // TEST this is for testing d6n geometry location
     var cubeGeo = new THREE.CubeGeometry(0.3, 0.3, 0.3);
     testBox = new THREE.Mesh(cubeGeo, material);
     scene.add(testBox);
+
+    // TEST this is for testing d20 geometry location
+    var icoGeo = new THREE.IcosahedronGeometry(0.25, 0);
+    testIco = new THREE.Mesh(icoGeo, material);
+    testIco.position.set(-2, 0, 0);
+    scene.add(testIco);
 
     planeGeometry = new THREE.CubeGeometry(5, 0.1, 5);
     plane = new THREE.Mesh(planeGeometry, material);
@@ -54,15 +60,13 @@ function init() {
                 child.material = materialObj;
 
                 d6nGeo = new THREE.Geometry().fromBufferGeometry(child.geometry);
-
-                d.resolve();
             }
         });
 
+        d6nGeo.translate(obj.position);
+
         three_d6n = obj;
         scene.add(three_d6n);
-
-        console.log(three_d6n);
     });
 
     loader.load("Assets/Dices/d10.json", function (obj) {
@@ -84,13 +88,36 @@ function init() {
         obj.traverse(function (child) {
             if (child instanceof THREE.Mesh) {
                 child.material = materialObj;
+
+                //d20Geo = new THREE.Geometry().fromBufferGeometry(child.geometry);
+                d20Geo = new THREE.IcosahedronGeometry(0.25, 0);
+
+                // Populate d20Verts with the vertices of the Icosahedron for translation to Cannon geometry
+                for (i = 0; i < d20Geo.vertices.length; i++) {
+                    d20Verts[i * 3] = d20Geo.vertices[i].x;
+                    d20Verts[i * 3 + 1] = d20Geo.vertices[i].y;
+                    d20Verts[i * 3 + 2] = d20Geo.vertices[i].z;
+                }
+
+                // Likewise, populate d20Faces
+                for (i = 0; i < d20Geo.faces.length; i++) {
+                    d20Faces[i * 3] = d20Geo.faces[i].a;
+                    d20Faces[i * 3 + 1] = d20Geo.faces[i].b;
+                    d20Faces[i * 3 + 2] = d20Geo.faces[i].c;
+                }
+
+                d.resolve(); // Resolve goes here so that initCannon function waits until it has this data available.
+                             // Another way to do this might be to have a boolean waiting for d20Verts and d20Faces to not be undefined.
             }
         });
         obj.scale.set(20, 20, 20);
         obj.position.set(-2, 0, 0);
+        d20Geo.translate(-2, 0, 0);
 
-        cannon_d20 = obj;
-        scene.add(cannon_d20);
+        obj.geometry = d20Geo;
+
+        three_d20 = obj;
+        scene.add(three_d20);
     });
 
     renderer = new THREE.WebGLRenderer({ antialias: true});
@@ -108,29 +135,54 @@ function initCannon() {
     world.gravity.set(0, -9.82 / 2, 0); // Set the gravity
     world.broadphase = new CANNON.NaiveBroadphase(); // Broadphase algorithm detects collisions
 
-    cannon_d6n = new CANNON.Body({ mass: 1 });
-
-    var shape = new CANNON.Box(new CANNON.Vec3(0.15,0.15,0.15)); 
-    cannon_d6n.addShape(shape);
-    cannon_d6n.angularVelocity.set(0, 0, -3);
-    //cannon_d6n.position.set(0.25, 0.25, 0.25);
-    cannon_d6n.angularDamping = 0.5;
-    world.addBody(cannon_d6n);
-
-    var platformBody = new CANNON.Body({ mass: 0, position: new CANNON.Vec3(0, -2, 0) });
-    var platform = new CANNON.Box(new CANNON.Vec3(5, 0.1, 5));
-    platformBody.addShape(platform);
-    world.addBody(platformBody);
-
+    // Add a physics material for objects
     physicsMaterial = new CANNON.Material("baseMaterial");
+    physicsMaterial.friction = 0.4;
+    physicsMaterial.restitution = 0.2;
     physicsContactMaterial = new CANNON.ContactMaterial(
         physicsMaterial,
-        physicsMaterial, 
+        physicsMaterial,
         0.4,  // Friction coefficient
         0.2); // Restitution (bounciness)
 
     // Add material to the Cannon.js world
     world.addContactMaterial(physicsContactMaterial);
+
+    // Add a cube corresponding to the d6n to the cannon world.
+    cannon_d6n = new CANNON.Body({ mass: 1, material: physicsMaterial });
+
+    var d6nShape = new CANNON.Box(new CANNON.Vec3(0.15,0.15,0.15)); // Make a box to correspond to d6.
+    cannon_d6n.addShape(d6nShape); // Add the new shape to the body.
+    cannon_d6n.angularVelocity.set(0, 0, -3); // Apply velocity for test.
+    cannon_d6n.angularDamping = 0.5; // Idk exactly what this does.
+    world.addBody(cannon_d6n); // Add d6n to world.
+
+    // Add a convex polyhedron, based on the THREE.IcosahedronGeometry d20Geo, to the cannon world.
+    cannon_d20 = new CANNON.Body({ mass: 1, material: physicsMaterial });
+
+    // Convert the collected vertices and faces of the d20 geometry to CANNON.Vec3 and Int32Array variables to build a Cannon geometry
+    var d20CannonVerts = [CANNON.Vec3()]; 
+    for (i = 0; i < d20Verts.length / 3; i++) {
+        d20CannonVerts[i] = new CANNON.Vec3(d20Verts[i * 3], d20Verts[i * 3 + 1], d20Verts[i * 3 + 2]);
+    }
+    var d20CannonFaces = [new Int32Array(3)];
+    for (i = 0; i < d20Faces.length / 3; i++) {
+        d20CannonFaces[i] = [d20Faces[i * 3], d20Faces[i * 3 + 1], d20Faces[i * 3 + 2]];
+    }
+    console.log(d20CannonVerts);
+
+    d20shape = new CANNON.ConvexPolyhedron(d20CannonVerts, d20CannonFaces);
+    d20shape.transformAllPoints(new CANNON.Vec3(-2, 0, 0));
+    cannon_d20.addShape(d20shape);
+    cannon_d20.position.set(-2, 0, 0);
+    cannon_d20.angularVelocity.set(2, 0, -1);
+    cannon_d20.angularDamping = 0.5;
+    world.addBody(cannon_d20);
+
+    var platformBody = new CANNON.Body({ mass: 0, material: physicsMaterial, position: new CANNON.Vec3(0, -1.5, 0) });
+    var platform = new CANNON.Box(new CANNON.Vec3(5, 0.1, 5));
+    platformBody.addShape(platform);
+    world.addBody(platformBody);
 
     return d.promise();
 }
@@ -167,7 +219,11 @@ function updatePhysics() {
     three_d6n.quaternion.copy(cannon_d6n.quaternion);
     testBox.quaternion.copy(cannon_d6n.quaternion);
 
-    //three_d6n.position.x += 0.5;
-    //three_d6n.position.y += 0.5;
-    //three_d6n.position.z += 0.5;
+    three_d20.position.copy(cannon_d20.position);
+    testIco.position.copy(cannon_d20.position);
+
+    three_d20.quaternion.copy(cannon_d20.quaternion);
+    testIco.quaternion.copy(cannon_d20.quaternion);
+
+    console.log(cannon_d20.position);
 }
