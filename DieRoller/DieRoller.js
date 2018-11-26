@@ -10,6 +10,9 @@ var d6nGeo, d20Geo; // Die geometries
 var light, light2, ambientLight, rectLightHelper;
 var loader, textureLoader;
 
+var d6nCurrentPos, d6nLastPos, d20CurrentPos, d20LastPos; // Position variables for checking whether dice are stopped
+var d6nResult = 0, d20Result = 0; // The result of the roll once the die is stopped
+
 var physicsMaterial, physicsContactMaterial; // Cannon.js materials
 var world, timeStep = 1/60; // Cannon.js world/update variables
 
@@ -149,16 +152,16 @@ function initCannon() {
     world.addContactMaterial(physicsContactMaterial);
 
     // Add a cube corresponding to the d6n to the cannon world.
-    cannon_d6n = new CANNON.Body({ mass: 1, material: physicsMaterial });
+    cannon_d6n = new CANNON.Body({ mass: 1, /*material: physicsMaterial*/ });
 
     var d6nShape = new CANNON.Box(new CANNON.Vec3(0.15,0.15,0.15)); // Make a box to correspond to d6.
     cannon_d6n.addShape(d6nShape); // Add the new shape to the body.
-    cannon_d6n.angularVelocity.set(0, 0, -3); // Apply velocity for test.
-    cannon_d6n.angularDamping = 0.5; // Idk exactly what this does.
+    cannon_d6n.angularVelocity.set(0, 0, -3); // Position, velocity, and angular velocity assignments for testing purposes.
+    cannon_d6n.velocity.set(-2, 0, 0);
     world.addBody(cannon_d6n); // Add d6n to world.
 
     // Add a convex polyhedron, based on the THREE.IcosahedronGeometry d20Geo, to the cannon world.
-    cannon_d20 = new CANNON.Body({ mass: 1, material: physicsMaterial });
+    cannon_d20 = new CANNON.Body({ mass: 1, /*material: physicsMaterial*/ });
 
     // Convert the collected vertices and faces of the d20 geometry to CANNON.Vec3 and Int32Array variables to build a Cannon geometry
     var d20CannonVerts = [CANNON.Vec3()]; 
@@ -172,14 +175,14 @@ function initCannon() {
     console.log(d20CannonVerts);
 
     d20shape = new CANNON.ConvexPolyhedron(d20CannonVerts, d20CannonFaces);
-    d20shape.transformAllPoints(new CANNON.Vec3(-2, 0, 0));
+    //d20shape.transformAllPoints(new CANNON.Vec3(-2, 0, 0));
     cannon_d20.addShape(d20shape);
-    cannon_d20.position.set(-2, 0, 0);
+    cannon_d20.position.set(-2, 0, 0); // Position, velocity, and angular velocity assignments for testing purposes.
     cannon_d20.angularVelocity.set(2, 0, -1);
-    cannon_d20.angularDamping = 0.5;
+    cannon_d20.velocity.set(2, 0, 0);
     world.addBody(cannon_d20);
 
-    var platformBody = new CANNON.Body({ mass: 0, material: physicsMaterial, position: new CANNON.Vec3(0, -1.5, 0) });
+    var platformBody = new CANNON.Body({ mass: 0, material: physicsMaterial, position: new CANNON.Vec3(0, -2, 0) });
     var platform = new CANNON.Box(new CANNON.Vec3(5, 0.1, 5));
     platformBody.addShape(platform);
     world.addBody(platformBody);
@@ -225,5 +228,28 @@ function updatePhysics() {
     three_d20.quaternion.copy(cannon_d20.quaternion);
     testIco.quaternion.copy(cannon_d20.quaternion);
 
-    console.log(cannon_d20.position);
+    // Update position variables to check if the dice have stopped
+    d6nLastPos = d6nCurrentPos;
+    d6nCurrentPos = cannon_d6n.position;
+
+    d20LastPos = d20CurrentPos;
+    d20CurrentPos = cannon_d20.position;
+
+    if (d6nCurrentPos == d6nLastPos) {
+        d6nResultDisplay();
+    }
+
+    if (d20CurrentPos == d20LastPos) {
+        d20ResultDisplay();
+    }
+}
+
+function d6nResultDisplay() {
+    var p = document.createElement("p");
+
+    console.log(three_d6n.quaternion); // debug
+}
+
+function d20ResultDisplay() {
+    var p = document.createElement("p");
 }
