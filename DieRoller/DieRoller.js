@@ -17,9 +17,20 @@ var d6nResult = 0, d20Result = 0; // The result of the roll once the die is stop
 var physicsMaterial, physicsContactMaterial; // Cannon.js materials
 var world, timeStep = 1/60; // Cannon.js world/update variables
 
+var raycaster = new THREE.Raycaster();
+var mousePos = new THREE.Vector2(), mousePressed = false;
+
 function Main() {
-    // Promise to run init, then run initCannon.
+    init();
+    // Promise to run initThree, then run initCannon.
     promise = initThree().then(initCannon);
+}
+
+function init() { // Initialization abstracted from three and cannon.
+    document.addEventListener('mousemove', onDocumentMouseMove, false);
+    document.addEventListener('mousedown', onDocumentMouseDown, false);
+    document.addEventListener('mouseup', onDocumentMouseUp, false);
+    document.addEventListener('contextmenu', event => event.preventDefault());
 }
 
 function initThree() {
@@ -134,8 +145,6 @@ function initThree() {
     renderer = new THREE.WebGLRenderer({ antialias: true});
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
-
-    requestAnimationFrame(render);
     return d.promise();
 }
 
@@ -160,16 +169,19 @@ function initCannon() {
     world.addContactMaterial(physicsContactMaterial);
 
     // Add a cube corresponding to the d6n to the cannon world.
-    cannon_d6n = new CANNON.Body({ mass: 1, /*material: physicsMaterial*/ });
+    cannon_d6n = new CANNON.Body({ mass: 0 });
+    cannon_d6n.type = CANNON.Body.DYNAMIC;
 
-    var d6nShape = new CANNON.Box(new CANNON.Vec3(0.15,0.15,0.15)); // Make a box to correspond to d6.
+    var d6nShape = new CANNON.Box(new CANNON.Vec3(0.15, 0.15, 0.15)); // Make a box to correspond to d6n
     cannon_d6n.addShape(d6nShape); // Add the new shape to the body.
-    cannon_d6n.angularVelocity.set(0, 0, -3); // Position, velocity, and angular velocity assignments for testing purposes.
-    cannon_d6n.velocity.set(-2, 0, -.1);
+    cannon_d6n.position.set(-1, 0, 0);
+    cannon_d6n.angularVelocity.set(0, 0, 3); // Position, velocity, and angular velocity assignments for testing purposes.
+    //cannon_d6n.velocity.set(-2, 0, -.1);
     world.addBody(cannon_d6n); // Add d6n to world.
 
     // Add a convex polyhedron, based on the THREE.IcosahedronGeometry d20Geo, to the cannon world.
-    cannon_d20 = new CANNON.Body({ mass: 1, /*material: physicsMaterial*/ });
+    cannon_d20 = new CANNON.Body({ mass: 0 });
+    cannon_d20.type = CANNON.Body.DYNAMIC;
 
     // Convert the collected vertices and faces of the d20 geometry to CANNON.Vec3 and Int32Array variables to build a Cannon geometry
     var d20CannonVerts = [CANNON.Vec3()]; 
@@ -180,21 +192,18 @@ function initCannon() {
     for (i = 0; i < d20Faces.length / 3; i++) {
         d20CannonFaces[i] = [d20Faces[i * 3], d20Faces[i * 3 + 1], d20Faces[i * 3 + 2]];
     }
-    console.log(d20CannonVerts);
 
     d20shape = new CANNON.ConvexPolyhedron(d20CannonVerts, d20CannonFaces);
     //d20shape.transformAllPoints(new CANNON.Vec3(-2, 0, 0));
     cannon_d20.addShape(d20shape);
-    cannon_d20.position.set(-2, 0, 0); // Position, velocity, and angular velocity assignments for testing purposes.
-    cannon_d20.angularVelocity.set(2, 0, 1);
-    cannon_d20.velocity.set(2, 0, 1);
+    cannon_d20.position.set(1, 0, 0); // Position, velocity, and angular velocity assignments for testing purposes.
+    cannon_d20.angularVelocity.set(0, 0, -3);
     world.addBody(cannon_d20);
 
-    var platformBody = new CANNON.Body({ mass: 0, material: physicsMaterial, position: new CANNON.Vec3(0, -2, 0) });
-    var platform = new CANNON.Box(new CANNON.Vec3(5, 0.1, 5));
-    platformBody.addShape(platform);
-    world.addBody(platformBody);
+    initBorders();
 
+
+    requestAnimationFrame(render);
     return d.promise();
 }
 
@@ -212,8 +221,32 @@ function initLights() {
     scene.add(ambientLight);
 }
 
+function initBorders() {
+    // Initialize the platform and invisible walls
+    var platformBody = new CANNON.Body({ mass: 0, material: physicsMaterial, position: new CANNON.Vec3(0, -2, 0) });
+    var platform = new CANNON.Box(new CANNON.Vec3(2.5, 0.1, 2.5));
+    var backWallBody = new CANNON.Body({ mass: 0, material: physicsMaterial, position: new CANNON.Vec3(0, 0, -2.5) });
+    var frontWallBody = new CANNON.Body({ mass: 0, material: physicsMaterial, position: new CANNON.Vec3(0, 0, 2.5) });
+    var backWall = new CANNON.Box(new CANNON.Vec3(2.5, 2.5, 0.1));
+    var leftWallBody = new CANNON.Body({ mass: 0, material: physicsMaterial, position: new CANNON.Vec3(-2.5, 0, 0) });
+    var rightWallBody = new CANNON.Body({ mass: 0, material: physicsMaterial, position: new CANNON.Vec3(2.5, 0, 0) });
+    var sideWall = new CANNON.Box(new CANNON.Vec3(0.1, 2.5, 2.5));
+    platformBody.addShape(platform);
+    world.addBody(platformBody);
+    backWallBody.addShape(backWall);
+    world.addBody(backWallBody);
+    frontWallBody.addShape(backWall);
+    world.addBody(frontWallBody);
+    leftWallBody.addShape(sideWall);
+    world.addBody(leftWallBody);
+    rightWallBody.addShape(sideWall);
+    world.addBody(rightWallBody);
+}
+
 function render() {
     requestAnimationFrame(render);
+
+    updateLastPos(); // This doesn't work right because js sucks, have to figure it out
 
     updatePhysics();
 
@@ -221,6 +254,7 @@ function render() {
 }
 
 function updatePhysics() {
+
     world.step(timeStep);
 
     // Reflect the cannon object's position onto the three mesh
@@ -231,10 +265,7 @@ function updatePhysics() {
     d20Group.quaternion.copy(cannon_d20.quaternion);
 
     // Update position variables to check if the dice have stopped
-    d6nLastPos = d6nCurrentPos;
     d6nCurrentPos = cannon_d6n.position;
-
-    d20LastPos = d20CurrentPos;
     d20CurrentPos = cannon_d20.position;
 
     if (d6nCurrentPos == d6nLastPos) {
@@ -246,12 +277,47 @@ function updatePhysics() {
     }
 }
 
+function updateLastPos() {
+    // Update last position before the world step
+    d6nLastPos = d6nGroup.position;
+    d20LastPos = d20Group.position;
+}
+
 function d6nResultDisplay() {
     var p = document.createElement("p");
 
-    //console.log(three_d6n.quaternion); // debug
+    console.log(three_d6n.quaternion); // debug
 }
 
 function d20ResultDisplay() {
     var p = document.createElement("p");
+}
+
+function onDocumentMouseDown(event) {
+
+    mousePressed = true;
+
+    switch (event.button) {
+        case 0: // Left click = d6n
+            cannon_d6n.mass = 1;
+            cannon_d6n.position.set(0, 0, 0);
+            cannon_d6n.velocity = new CANNON.Vec3(mousePos.x * 10, 0, (mousePos.y - 2) * 10);
+            cannon_d6n.angularVelocity = new CANNON.Vec3(-mousePos.x * 10, 0, -(mousePos.y - 2) * 10);
+            cannon_d6n.updateMassProperties();
+            break;
+        case 2: // Right click = d20
+            cannon_d20.mass = 1;
+            cannon_d20.position.set(0, 0, 0);
+            cannon_d20.velocity = new CANNON.Vec3(mousePos.x * 10, 0, (mousePos.y - 2) * 10);
+            cannon_d20.angularVelocity = new CANNON.Vec3(-mousePos.x * 10, -(mousePos.y - 2) * 10, 0);
+            cannon_d20.updateMassProperties();
+    }
+}
+
+function onDocumentMouseUp(event) { mousePressed = false; }
+
+function onDocumentMouseMove(event) {
+    mousePos.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mousePos.y = (event.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mousePos.clone(), camera);
 }
