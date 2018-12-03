@@ -60,7 +60,7 @@ function initThree() {
     loader = new THREE.ObjectLoader();
 
     loader.load("Assets/Dices/d6n.json", function (obj) {
-        var materialObj = new THREE.MeshLambertMaterial({ color: 0x3479e5 });
+        var materialObj = new THREE.MeshPhongMaterial({ color: 0x0E3386 });
 
         obj.scale.set(24, 24, 24);
 
@@ -100,7 +100,7 @@ function initThree() {
     });*/
 
     loader.load("Assets/Dices/d20.json", function (obj) {
-        var materialObj = new THREE.MeshLambertMaterial({ color: 0x139615 });
+        var materialObj = new THREE.MeshPhongMaterial({ color: 0x139615 });
         obj.traverse(function (child) {
             if (child instanceof THREE.Mesh) {
                 child.material = materialObj;
@@ -246,8 +246,6 @@ function initBorders() {
 function render() {
     requestAnimationFrame(render);
 
-    updateLastPos(); // This doesn't work right because js sucks, have to figure it out
-
     updatePhysics();
 
     renderer.render(scene, camera);
@@ -277,20 +275,43 @@ function updatePhysics() {
     }
 }
 
-function updateLastPos() {
-    // Update last position before the world step
-    d6nLastPos = d6nGroup.position;
-    d20LastPos = d20Group.position;
-}
-
 function d6nResultDisplay() {
-    var p = document.createElement("p");
+    var p = document.getElementById("d6result");
 
-    console.log(three_d6n.quaternion); // debug
+    var rot = cannon_d6n.quaternion;
+
+    var xyDiff = Math.abs(rot.x - rot.y);
+    var yzDiff = Math.abs(rot.y - rot.z);
+    var absxyDiff = Math.abs(Math.abs(rot.x) - Math.abs(rot.y));
+    var absyzDiff = Math.abs(Math.abs(rot.y) - Math.abs(rot.z));
+
+    if (yzDiff < 0.01) {
+        p.innerHTML = "D6 Result: 2";
+    }
+    else if (xyDiff < 0.01) {
+        p.innerHTML = "D6 Result: 4";
+    }
+    else if (absxyDiff < 0.01) {
+        p.innerHTML = "D6 Result: 3";
+    }
+    else if (absyzDiff < 0.01) {
+        p.innerHTML = "D6 Result: 5";
+    }
+    else if (Math.abs(rot.x) < 0.001 && Math.abs(rot.z) < 0.001) {
+        p.innerHTML = "D6 Result: 6";
+    }
+    else if (Math.abs(rot.y) < 0.001) {
+        p.innerHTML = "D6 Result: 1";
+    }
+    else {
+        p.innerHTML = "D6 result unclear. Please wait a moment or roll again.";
+    }
 }
 
 function d20ResultDisplay() {
-    var p = document.createElement("p");
+    var p = document.getElementById("d20result");
+
+    console.log(cannon_d20.quaternion);
 }
 
 function onDocumentMouseDown(event) {
@@ -304,6 +325,9 @@ function onDocumentMouseDown(event) {
             cannon_d6n.velocity = new CANNON.Vec3(mousePos.x * 10, 0, (mousePos.y - 2) * 10);
             cannon_d6n.angularVelocity = new CANNON.Vec3(-mousePos.x * 10, 0, -(mousePos.y - 2) * 10);
             cannon_d6n.updateMassProperties();
+
+            document.getElementById("d6result").innerHTML = "D6 rolling...";
+            setTimeout(d6nResultDisplay, 5000);
             break;
         case 2: // Right click = d20
             cannon_d20.mass = 1;
@@ -311,6 +335,10 @@ function onDocumentMouseDown(event) {
             cannon_d20.velocity = new CANNON.Vec3(mousePos.x * 10, 0, (mousePos.y - 2) * 10);
             cannon_d20.angularVelocity = new CANNON.Vec3(-mousePos.x * 10, -(mousePos.y - 2) * 10, 0);
             cannon_d20.updateMassProperties();
+
+            document.getElementById("d20result").innerHTML = "D20 rolling...";
+            setTimeout(d20ResultDisplay, 7000);
+            break;
     }
 }
 
