@@ -314,6 +314,7 @@ function d6nResultDisplay() {
 function d20ResultDisplay() {
     var p = document.getElementById("d20result");
 
+    p.innerHTML = "D20 rolled. Recommend use of ortho camera to see result.";
     console.log(cannon_d20.quaternion);
 }
 
