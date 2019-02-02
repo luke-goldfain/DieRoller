@@ -311,7 +311,8 @@ function d6nResultDisplay() {
 function d20ResultDisplay() {
     var p = document.getElementById("d20result");
 
-    console.log(cannon_d20.quaternion);
+    d20Group.rotation.reorder("XYZ"); // Debug
+    console.log(d20Group.rotation); // Rotation in euler form
 }
 
 function onDocumentMouseDown(event) {
