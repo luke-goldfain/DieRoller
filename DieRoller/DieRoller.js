@@ -39,6 +39,9 @@ function initThree() {
     camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 100);
     camera.position.set(0, 2, 2);
     camera.rotation.set(-Math.PI / 3, 0, 0);
+    //camera = new THREE.OrthographicCamera(-4, 4, 2.5, -2.5, 1, 1000);
+    //camera.position.set(0, 2, 0);
+    //camera.rotation.set(-Math.PI / 2, 0, 0);
 
     scene = new THREE.Scene();
     scene.addEventListener('update', function () { });
@@ -349,4 +352,20 @@ function onDocumentMouseMove(event) {
     mousePos.x = (event.clientX / window.innerWidth) * 2 - 1;
     mousePos.y = (event.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mousePos.clone(), camera);
+}
+
+function SwitchCamera() {
+
+    if (camera.isPerspectiveCamera) {
+        camera = new THREE.OrthographicCamera(-4, 4, 2.5, -2.5, 1, 1000);
+        camera.position.set(0, 2, 0);
+        camera.rotation.set(-Math.PI / 2, 0, 0);
+        document.getElementById("switchCamera").innerHTML = "Switch to perspective camera";
+    }
+    else if (camera.isOrthographicCamera) {
+        camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 100);
+        camera.position.set(0, 2, 2);
+        camera.rotation.set(-Math.PI / 3, 0, 0);
+        document.getElementById("switchCamera").innerHTML = "Switch to orthographic camera";
+    }
 }
