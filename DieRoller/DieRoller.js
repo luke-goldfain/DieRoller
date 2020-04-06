@@ -62,31 +62,45 @@ function initThree() {
 
     loader = new THREE.ObjectLoader();
 
-    loader.load("Assets/Dices/d6n.json", function (obj) {
-        var materialObj = new THREE.MeshPhongMaterial({ color: 0x0E3386 });
+    // Original - Imported d6n model
+    //loader.load("Assets/Dices/d6n.json", function (obj) {
+    //    var materialObj = new THREE.MeshPhongMaterial({ color: 0x0E3386 });
 
-        obj.scale.set(24, 24, 24);
+    //    obj.scale.set(24, 24, 24);
 
-        obj.traverse(function (child) {
-            if (child instanceof THREE.Mesh) {
-                child.material = materialObj;
+    //    obj.traverse(function (child) {
+    //        if (child instanceof THREE.Mesh) {
+    //            child.material = materialObj;
 
-                d6nGeo = new THREE.Geometry().fromBufferGeometry(child.geometry);
-            }
-        });
+    //            d6nGeo = new THREE.Geometry().fromBufferGeometry(child.geometry);
+    //        }
+    //    });
 
-        d6nGeo.translate(obj.position);
+    //    d6nGeo.translate(obj.position);
 
-        three_d6n = obj;
-        //scene.add(three_d6n);
+    //    three_d6n = obj;
+    //    //scene.add(three_d6n);
 
-        // Create a group to force the mesh to a relative position
-        d6nGroup = new THREE.Group();
-        three_d6n.position.set(.5, -.15, .45); // Relative position within the group (this should equal initial global location of cannon_d6n)
-        d6nGroup.add(three_d6n);
+    //    // Create a group to force the mesh to a relative position
+    //    d6nGroup = new THREE.Group();
+    //    three_d6n.position.set(.5, -.15, .45); // Relative position within the group (this should equal initial global location of cannon_d6n)
+    //    d6nGroup.add(three_d6n);
 
-        scene.add(d6nGroup);
-    });
+    //    scene.add(d6nGroup);
+    //});
+
+    // Update - Simple cube geometry
+    var cubeGeo = new THREE.BoxGeometry(.5,.5,.5);
+    var cubeMat = new THREE.MeshPhongMaterial({ color: 0x0E3386 });
+    three_d6n = new THREE.Mesh(cubeGeo, cubeMat);
+
+    scene.add(three_d6n);
+
+    d6nGroup = new THREE.Group();
+    //three_d6n.position.set(.5, -.15, .45);
+    d6nGroup.add(three_d6n);
+
+    scene.add(d6nGroup);
 
     /*loader.load("Assets/Dices/d10.json", function (obj) {
         var materialObj = new THREE.MeshLambertMaterial({ color: 0xc92424 });
