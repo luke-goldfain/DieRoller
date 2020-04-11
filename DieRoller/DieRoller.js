@@ -91,8 +91,30 @@ function initThree() {
 
     // Update - Simple cube geometry
     var cubeGeo = new THREE.BoxGeometry(.5,.5,.5);
-    var cubeMat = new THREE.MeshPhongMaterial({ color: 0x0E3386 });
-    three_d6n = new THREE.Mesh(cubeGeo, cubeMat);
+
+    // Load images from d6n textures folder
+    var d6nTexture = [
+        new THREE.MeshBasicMaterial({
+            map: THREE.ImageUtils.loadTexture('Assets/d6n textures/d6n-4.png') // 4
+        }),
+        new THREE.MeshBasicMaterial({
+            map: THREE.ImageUtils.loadTexture('Assets/d6n textures/d6n-3.png') // 3
+        }),
+        new THREE.MeshBasicMaterial({
+            map: THREE.ImageUtils.loadTexture('Assets/d6n textures/d6n-6.png') // 6
+        }),
+        new THREE.MeshBasicMaterial({
+            map: THREE.ImageUtils.loadTexture('Assets/d6n textures/d6n-1.png') // 1
+        }),
+        new THREE.MeshBasicMaterial({
+            map: THREE.ImageUtils.loadTexture('Assets/d6n textures/d6n-2.png') // 2
+        }),
+        new THREE.MeshBasicMaterial({
+            map: THREE.ImageUtils.loadTexture('Assets/d6n textures/d6n-5.png') // 5
+        })];
+
+    three_d6n = new THREE.Mesh(cubeGeo, d6nTexture);
+
 
     scene.add(three_d6n);
 
