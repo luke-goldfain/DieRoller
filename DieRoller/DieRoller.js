@@ -119,7 +119,6 @@ function initThree() {
     scene.add(three_d6n);
 
     d6nGroup = new THREE.Group();
-    //three_d6n.position.set(.5, -.15, .45);
     d6nGroup.add(three_d6n);
 
     scene.add(d6nGroup);
@@ -138,48 +137,83 @@ function initThree() {
         scene.add(cannon_d10);
     });*/
 
-    loader.load("Assets/Dices/d20.json", function (obj) {
-        var materialObj = new THREE.MeshPhongMaterial({ color: 0x139615 });
-        obj.traverse(function (child) {
-            if (child instanceof THREE.Mesh) {
-                child.material = materialObj;
+    // Original - imported D20 model
+    //loader.load("Assets/Dices/d20.json", function (obj) {
+    //    var materialObj = new THREE.MeshPhongMaterial({ color: 0x139615 });
+    //    obj.traverse(function (child) {
+    //        if (child instanceof THREE.Mesh) {
+    //            child.material = materialObj;
 
-                //d20Geo = new THREE.Geometry().fromBufferGeometry(child.geometry);
-                d20Geo = new THREE.IcosahedronGeometry(0.25, 0);
+    //            //d20Geo = new THREE.Geometry().fromBufferGeometry(child.geometry);
+    //            d20Geo = new THREE.IcosahedronGeometry(0.25, 0);
 
-                // Populate d20Verts with the vertices of the Icosahedron for translation to Cannon geometry
-                for (i = 0; i < d20Geo.vertices.length; i++) {
-                    d20Verts[i * 3] = d20Geo.vertices[i].x;
-                    d20Verts[i * 3 + 1] = d20Geo.vertices[i].y;
-                    d20Verts[i * 3 + 2] = d20Geo.vertices[i].z;
-                }
+    //            // Populate d20Verts with the vertices of the Icosahedron for translation to Cannon geometry
+    //            for (i = 0; i < d20Geo.vertices.length; i++) {
+    //                d20Verts[i * 3] = d20Geo.vertices[i].x;
+    //                d20Verts[i * 3 + 1] = d20Geo.vertices[i].y;
+    //                d20Verts[i * 3 + 2] = d20Geo.vertices[i].z;
+    //            }
 
-                // Likewise, populate d20Faces
-                for (i = 0; i < d20Geo.faces.length; i++) {
-                    d20Faces[i * 3] = d20Geo.faces[i].a;
-                    d20Faces[i * 3 + 1] = d20Geo.faces[i].b;
-                    d20Faces[i * 3 + 2] = d20Geo.faces[i].c;
-                }
+    //            // Likewise, populate d20Faces
+    //            for (i = 0; i < d20Geo.faces.length; i++) {
+    //                d20Faces[i * 3] = d20Geo.faces[i].a;
+    //                d20Faces[i * 3 + 1] = d20Geo.faces[i].b;
+    //                d20Faces[i * 3 + 2] = d20Geo.faces[i].c;
+    //            }
 
-                d.resolve(); // Resolve goes here so that initCannon function waits until it has this data available.
-                             // Another way to do this might be to have a boolean waiting for d20Verts and d20Faces to not be undefined.
-            }
-        });
-        obj.scale.set(24, 24, 24);
+    //            d.resolve(); // Resolve goes here so that initCannon function waits until it has this data available.
+    //                         // Another way to do this might be to have a boolean waiting for d20Verts and d20Faces to not be undefined.
+    //        }
+    //    });
+    //    obj.scale.set(24, 24, 24);
 
-        obj.geometry = d20Geo;
+    //    obj.geometry = d20Geo;
 
-        three_d20 = obj;
+    //    three_d20 = obj;
 
-        d20Group = new THREE.Group();
-        three_d20.position.set(0, .1, .75);
-        three_d20.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 7);
-        d20Group.add(three_d20);
-        //d20Group.add(testIco);
+    //    d20Group = new THREE.Group();
+    //    three_d20.position.set(0, .1, .75);
+    //    three_d20.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 7);
+    //    d20Group.add(three_d20);
+    //    //d20Group.add(testIco);
 
-        //scene.add(three_d20);
-        scene.add(d20Group);
-    });
+    //    //scene.add(three_d20);
+    //    scene.add(d20Group);
+    //});
+
+    // Update - Icosahedron geometry
+    d20Geo = new THREE.IcosahedronGeometry(0.5, 0);
+
+    // Populate d20Verts with the vertices of the Icosahedron for translation to Cannon geometry
+    for (i = 0; i < d20Geo.vertices.length; i++) {
+        d20Verts[i * 3] = d20Geo.vertices[i].x;
+        d20Verts[i * 3 + 1] = d20Geo.vertices[i].y;
+        d20Verts[i * 3 + 2] = d20Geo.vertices[i].z;
+    }
+
+    // Likewise, populate d20Faces
+    for (i = 0; i < d20Geo.faces.length; i++) {
+        d20Faces[i * 3] = d20Geo.faces[i].a;
+        d20Faces[i * 3 + 1] = d20Geo.faces[i].b;
+        d20Faces[i * 3 + 2] = d20Geo.faces[i].c;
+    }
+
+    d.resolve(); // Resolve goes here so that initCannon function waits until it has this data available.
+                    // Another way to do this might be to have a boolean waiting for d20Verts and d20Faces to not be undefined.
+
+    var d20Texture = new THREE.MeshBasicMaterial({ color: 0x139615 });
+
+    three_d20 = new THREE.Mesh(d20Geo, d20Texture);
+
+    scene.add(three_d20);
+
+    d20Group = new THREE.Group();
+    d20Group.add(three_d20);
+
+    scene.add(d20Group);
+
+
+
 
     renderer = new THREE.WebGLRenderer({ antialias: true});
     renderer.setSize(window.innerWidth, window.innerHeight);
