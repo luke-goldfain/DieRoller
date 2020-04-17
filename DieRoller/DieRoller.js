@@ -62,34 +62,7 @@ function initThree() {
 
     loader = new THREE.ObjectLoader();
 
-    // Original - Imported d6n model
-    //loader.load("Assets/Dices/d6n.json", function (obj) {
-    //    var materialObj = new THREE.MeshPhongMaterial({ color: 0x0E3386 });
-
-    //    obj.scale.set(24, 24, 24);
-
-    //    obj.traverse(function (child) {
-    //        if (child instanceof THREE.Mesh) {
-    //            child.material = materialObj;
-
-    //            d6nGeo = new THREE.Geometry().fromBufferGeometry(child.geometry);
-    //        }
-    //    });
-
-    //    d6nGeo.translate(obj.position);
-
-    //    three_d6n = obj;
-    //    //scene.add(three_d6n);
-
-    //    // Create a group to force the mesh to a relative position
-    //    d6nGroup = new THREE.Group();
-    //    three_d6n.position.set(.5, -.15, .45); // Relative position within the group (this should equal initial global location of cannon_d6n)
-    //    d6nGroup.add(three_d6n);
-
-    //    scene.add(d6nGroup);
-    //});
-
-    // Update - Simple cube geometry
+    // d6 - Simple cube geometry
     var cubeGeo = new THREE.BoxGeometry(.5,.5,.5);
 
     // Load images from d6n textures folder
@@ -137,51 +110,8 @@ function initThree() {
         scene.add(cannon_d10);
     });*/
 
-    // Original - imported D20 model
-    //loader.load("Assets/Dices/d20.json", function (obj) {
-    //    var materialObj = new THREE.MeshPhongMaterial({ color: 0x139615 });
-    //    obj.traverse(function (child) {
-    //        if (child instanceof THREE.Mesh) {
-    //            child.material = materialObj;
 
-    //            //d20Geo = new THREE.Geometry().fromBufferGeometry(child.geometry);
-    //            d20Geo = new THREE.IcosahedronGeometry(0.25, 0);
-
-    //            // Populate d20Verts with the vertices of the Icosahedron for translation to Cannon geometry
-    //            for (i = 0; i < d20Geo.vertices.length; i++) {
-    //                d20Verts[i * 3] = d20Geo.vertices[i].x;
-    //                d20Verts[i * 3 + 1] = d20Geo.vertices[i].y;
-    //                d20Verts[i * 3 + 2] = d20Geo.vertices[i].z;
-    //            }
-
-    //            // Likewise, populate d20Faces
-    //            for (i = 0; i < d20Geo.faces.length; i++) {
-    //                d20Faces[i * 3] = d20Geo.faces[i].a;
-    //                d20Faces[i * 3 + 1] = d20Geo.faces[i].b;
-    //                d20Faces[i * 3 + 2] = d20Geo.faces[i].c;
-    //            }
-
-    //            d.resolve(); // Resolve goes here so that initCannon function waits until it has this data available.
-    //                         // Another way to do this might be to have a boolean waiting for d20Verts and d20Faces to not be undefined.
-    //        }
-    //    });
-    //    obj.scale.set(24, 24, 24);
-
-    //    obj.geometry = d20Geo;
-
-    //    three_d20 = obj;
-
-    //    d20Group = new THREE.Group();
-    //    three_d20.position.set(0, .1, .75);
-    //    three_d20.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 7);
-    //    d20Group.add(three_d20);
-    //    //d20Group.add(testIco);
-
-    //    //scene.add(three_d20);
-    //    scene.add(d20Group);
-    //});
-
-    // Update - Icosahedron geometry
+    // d20 - Icosahedron geometry
     d20Geo = new THREE.IcosahedronGeometry(0.5, 0);
 
     // Populate d20Verts with the vertices of the Icosahedron for translation to Cannon geometry
@@ -199,11 +129,28 @@ function initThree() {
     }
 
     d.resolve(); // Resolve goes here so that initCannon function waits until it has this data available.
-                    // Another way to do this might be to have a boolean waiting for d20Verts and d20Faces to not be undefined.
+                 // Another way to do this might be to have a boolean waiting for d20Verts and d20Faces to not be undefined.
 
-    var d20Texture = new THREE.MeshBasicMaterial({ color: 0x139615 });
+    d20Geo.faceVertexUvs[0] = [];
 
-    three_d20 = new THREE.Mesh(d20Geo, d20Texture);
+    var d20Textures = [];
+
+    // Populate the d20's textures using UVs
+    for (var i = 0; i < d20Geo.faces.length; i++)
+    {
+        d20Geo.faceVertexUvs[0].push([
+            new THREE.Vector2(0.5, 0),
+            new THREE.Vector2(1, 0.85),
+            new THREE.Vector2(0, 0.85),
+        ]);
+
+        d20Geo.faces[i].materialIndex = i;
+
+        var texturePath = "Assets/d20 textures/d20-" + (i + 1) + ".png";
+        d20Textures.push(new THREE.MeshBasicMaterial({ map: THREE.ImageUtils.loadTexture(texturePath) }));
+    }
+
+    three_d20 = new THREE.Mesh(d20Geo, new THREE.MeshFaceMaterial(d20Textures));
 
     scene.add(three_d20);
 
